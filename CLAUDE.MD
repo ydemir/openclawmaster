@@ -17,6 +17,8 @@ A change is “done” only if:
 2) CI is green (lint/typecheck/tests)
 3) PR description includes: what changed + how to verify
 4) If UI changed: include screenshot(s) in PR description
+5) NotebookLM'e [TAMAMLANDI] notu yazıldı
+6) 3+ dosya değiştiyse repomix sync yapıldı
 
 ## Safety / Permissions
 - Never commit secrets. Use .env files and keep them out of git.
@@ -47,25 +49,59 @@ A change is “done” only if:
 - notebooklm-mcp-cli installed for NotebookLM history
 - repomix installed globally: `npm install -g repomix`
 
-## NotebookLM Memory Protocol (ZORUNLU)
-Her session'da ve önemli değişikliklerde bu protokolü uygula:
+## NotebookLM + Repomix Protokolü (ZORUNLU — İSTİSNASIZ UYGULANIR)
 
-1. **Session başlangıcı:** Notebook'u sorgula — `notebook_query` ile bağlamı yükle
-2. **3+ dosya değiştiğinde:** Repomix sync yap (aşağıya bak)
-3. **Önemli olay sonrası:** Not ekle — karar, tamamlanan iş, deployment, bug çözümü
-4. **Kod bağlamı güncelliği:** Notebook'taki repomix kaynağı 1 günden eskiyse yenile
+### SESSION BAŞLANGICI — Her Zaman
+Kullanıcı ilk mesajı gönderdiğinde, herhangi bir iş yapmadan önce:
+1. `docs/notebooklm-notebook-id.txt` dosyasını oku → notebook ID'yi al
+2. `notebook_query` ile şunu sor: "projenin mevcut durumu, son tamamlanan işler ve açık görevler neler?"
+3. Sonucu kullanıcıya özetle — "Geçen seferden: ..."
 
-### Repomix Sync Komutu (PowerShell)
-```powershell
-# Codebase'i paketle (compress ile token tasarrufu)
-npx repomix@latest --style markdown --compress --output docs/repomix-output.md
+### PROMPT / GÖREV AKIŞI
 
-# NotebookLM'e kaynak olarak ekle (source_add ile mevcut kaynağı güncelle)
-```
-Kaynak adı: `Codebase Snapshot — {YYYY-MM-DD}`
+**Görev başlamadan önce:**
+- Konuyla ilgili geçmiş var mı? → `notebook_query` ile sorgula
+- Daha önce aynı hata yaşandı mı? → `notebook_query "bu hata daha önce yaşandı mı"`
+- Benzer bir karar alındı mı? → `notebook_query` ile kontrol et
 
-### Ne Zaman Repomix Sync Yapılır
+**Görev tamamlandıktan sonra — SORMADAN yap:**
+- `note` ile [TAMAMLANDI] notu ekle
+- 3+ dosya değiştiyse → Repomix sync yap (aşağıya bak)
+
+### HATA YÖNETİMİ AKIŞI
+
+**Hata ilk karşılaşıldığında:**
+1. `notebook_query "bu hata daha önce yaşandı mı: {hata mesajı}"` — geçmişe bak
+2. Geçmişte çözüm varsa → direkt uygula, zaman kaybetme
+3. Geçmişte yoksa → araştır ve çöz
+
+**Hata çözüldükten sonra — SORMADAN yap:**
+1. `note` ile [BUG-COZUM] notu ekle:
+   - Hata ne idi
+   - Neden oldu (kök neden)
+   - Nasıl çözüldü
+   - Tekrar olmaması için ne yapıldı
+2. Eğer 3+ dosya değiştiyse → Repomix sync yap
+
+### REPOMIX SYNC — Ne Zaman (ZORUNLU)
+Aşağıdaki durumlarda repomix sync YAPILMADAN görev bitmez:
 - 3 veya daha fazla dosya değiştiğinde
-- Yeni bir skill eklendiğinde
-- Büyük bir feature tamamlandığında
-- Bir sonraki session için bağlam bırakmak istediğinde
+- Yeni skill eklendiğinde / güncellendiğinde
+- Feature veya fix tamamlandığında
+- Session sonunda önemli değişiklik varsa
+
+**Repomix Sync Adımları (PowerShell):**
+```powershell
+# 1. Paketle
+npx repomix@latest --style markdown --compress --ignore "docs/repomix-output.md,repomix-output.xml" --output docs/repomix-output.md
+
+# 2. Eski snapshot'ı NotebookLM'den sil (source_delete)
+# 3. Yeni snapshot'ı ekle (source_add, title: "Codebase Snapshot — YYYY-MM-DD")
+# 4. [REPOMIX-SYNC] notu ekle
+```
+
+### NOT YAZMA KURALLARI
+- Notlar kısa ve madde madde olur — paragraf değil
+- Her not başında kategori etiketi: [TAMAMLANDI] [BUG-COZUM] [KARAR] [DEPLOYMENT] [REPOMIX-SYNC]
+- Tarih formatı: YYYY-MM-DD
+- Kullanıcı "kaydet" demese de önemli olaylarda yaz

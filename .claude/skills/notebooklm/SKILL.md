@@ -1,183 +1,178 @@
 ---
 name: notebooklm
-description: Use this skill to save and query project memory in NotebookLM. Invoke when the user wants to log a decision, save a design doc, record a deployment, query project history, or any time important project context should be persisted across sessions. This is the long-term memory layer of OpenClawMaster.
+description: Use this skill to save and query project memory in NotebookLM. Invoke when the user wants to log a decision, save a design doc, record a deployment, query project history, or any time important project context should be persisted across sessions. Also triggers automatically at session start, task completion, error resolution, and after repomix sync. This is the long-term memory layer of OpenClawMaster.
 ---
 
 # NotebookLM Project Memory
 
 ## Overview
 
-Bu skill, OpenClawMaster projesinin uzun vadeli hafizasini NotebookLM uzerinde yonetir.
+Bu skill OpenClawMaster'in uzun vadeli hafizasini yonetir.
 MCP server (notebooklm-mcp) araclariyla calisir — ekstra kurulum gerekmez.
-
-**Ana Notebook:** Proje icin tek bir merkezi notebook kullanilir.
-Notebook ID'si ilk kullanimda olusturulur ve `docs/notebooklm-notebook-id.txt` dosyasina kaydedilir.
+Notebook ID: `docs/notebooklm-notebook-id.txt` dosyasindan okunur.
 
 ---
 
-## Ne Zaman Kullanilir
+## ZORUNLU AKIŞLAR — Sormadan Uygula
 
-- Yeni bir tasarim karari alindiktan sonra → kaydet
-- Bir skill tamamlandi → kaydet
-- Deployment yapildi → kaydet
-- Bir bug cozuldu → kaydet
-- Gecmis bir kararı hatirlamak gerektiginde → sorgula
-- Yeni bir session baslarken bağlam kurmak icin → sorgula
+### 1. Session Başlangıcı
+Kullanıcının ilk mesajından sonra, herhangi bir iş yapmadan önce:
+
+```
+notebook_query → "projenin mevcut durumu, son tamamlanan işler ve açık görevler neler?"
+```
+
+Sonucu kullanıcıya şu formatta özetle:
+```
+Geçen seferden:
+- Son yapılan: {ne tamamlandı}
+- Açık konular: {varsa}
+- Dikkat edilecek: {varsa kritik not}
+```
 
 ---
 
-## Workflow
+### 2. Görev / Prompt Akışı
 
-### 1. Notebook Bul veya Olustur
-
+**Görev başlamadan — Geçmişe Bak:**
 ```
-1. docs/notebooklm-notebook-id.txt dosyasini oku
-2. Dosya varsa → ID'yi kullan
-3. Dosya yoksa → notebook_list ile "OpenClawMaster" ara
-4. Hala yoksa → notebook_create ile olustur, ID'yi kaydet
+notebook_query → "daha önce {konu} ile ilgili ne yapıldı veya ne kararlaştırıldı?"
 ```
+Geçmişte çözüm varsa direkt uygula — tekrar araştırma.
 
-### 2. Kayit Yap (Log)
-
-Asagidaki kategorilerde not olarak kaydet:
-
-**Tasarim Karari:**
+**Görev tamamlandıktan sonra — Not Yaz:**
 ```
-[KARAR] {tarih} — {konu}
-Ne: {ne kararlasildi}
-Neden: {gerekcesi}
-Alternatifler: {diger secenekler}
+[TAMAMLANDI] {YYYY-MM-DD} — {görev adı}
+Ne yapıldı: {madde madde}
+Değişen dosyalar: {liste}
+Sonuç: {çalışıyor mu, test edildi mi}
 ```
-
-**Tamamlanan Is:**
-```
-[TAMAMLANDI] {tarih} — {skill/task adi}
-Ne yapildi: {ozet}
-Dosyalar: {degistirilen dosyalar}
-Sonuc: {kabul kriterleri gercti mi}
-```
-
-**Deployment:**
-```
-[DEPLOYMENT] {tarih} — {uygulama adi}
-Ortam: {production/staging}
-Versiyon/Commit: {bilgi}
-Durum: {basarili/basarisiz}
-Not: {varsa ozel durum}
-```
-
-**Bug / Cozum:**
-```
-[BUG-COZUM] {tarih} — {bug ozeti}
-Hata: {ne oluyordu}
-Kök neden: {neden oluyordu}
-Cozum: {nasil cozuldu}
-```
-
-### 3. Sorgulama
-
-Kullanici proje gecmisini sorguladiginda `notebook_query` kullan.
-
-Ornek sorgular:
-- "coolify-manager skill ne zaman yapildi?"
-- "brainstorming oturumlarinda alinan kararlar neler?"
-- "son deployment ne zamandy?"
-- "hangi bug'lar cozuldu?"
 
 ---
 
-## Repomix Sync — Codebase'i Notebook'a Ekle
+### 3. Hata Yönetimi Akışı
 
-Repomix, tüm codebase'i tek bir AI-dostu dosyaya paketler. Bu dosya NotebookLM'e kaynak olarak eklenerek AI'ın her zaman güncel kod bağlamına sahip olması sağlanır.
+**Hata karşılaşıldığında — Önce Geçmişe Bak:**
+```
+notebook_query → "şu hata daha önce yaşandı mı: {hata mesajı veya özeti}"
+```
+- Geçmişte çözüm varsa → direkt uygula
+- Yoksa → araştır, çöz, kaydet
 
-### Ne Zaman Yapılır
-- 3+ dosya değiştiğinde (otomatik kural)
-- Yeni skill eklendiğinde
-- Büyük bir feature tamamlandığında
-- Notebook'taki snapshot 1 günden eskiyse
+**Hata çözüldükten sonra — SORMADAN Kaydet:**
+```
+[BUG-COZUM] {YYYY-MM-DD} — {hatanın kısa özeti}
+Hata: {ne oluyordu, hata mesajı}
+Kök neden: {neden oldu}
+Çözüm: {nasıl düzeltildi, hangi dosya/satır}
+Tekrar önleme: {önlem alındıysa belirt}
+```
 
-### Adımlar
+---
 
-**1. Codebase'i paketle (PowerShell):**
+### 4. Repomix Sync Akışı
+
+**Tetikleyiciler (3+ dosya değiştiğinde ZORUNLU):**
+- Feature / skill tamamlandı
+- Bug fix 3+ dosya değiştirdi
+- Yeni skill eklendi
+
+**Adımlar:**
+
+**1. Paketle (PowerShell):**
 ```powershell
-npx repomix@latest --style markdown --compress --output docs/repomix-output.md
+npx repomix@latest --style markdown --compress --ignore "docs/repomix-output.md,repomix-output.xml" --output docs/repomix-output.md
 ```
 
-**2. Eski snapshot kaynağını sil (varsa):**
+**2. Eski snapshot'ı sil:**
 ```
-source_list_drive ile "Codebase Snapshot" adlı kaynağı bul → source_delete ile sil
+notebook_get → sources listesinden "Codebase Snapshot" başlıklı kaynağı bul
+source_delete(source_id = {bulunan ID}, confirm = true)
 ```
 
-**3. Yeni snapshot'ı kaynak olarak ekle:**
+**3. Yeni snapshot ekle:**
 ```
 source_add(
-  notebook_id = <docs/notebooklm-notebook-id.txt'den oku>,
+  notebook_id = {notebooklm-notebook-id.txt'den oku},
   source_type = "file",
   file_path = "docs/repomix-output.md",
   title = "Codebase Snapshot — {YYYY-MM-DD}"
 )
 ```
 
-**4. Sync notunu kaydet:**
+**4. Sync notu yaz:**
 ```
-[REPOMIX-SYNC] {tarih} — Codebase snapshot güncellendi
-Dosya sayısı: {N}
+[REPOMIX-SYNC] {YYYY-MM-DD}
+Dosya: {N} adet
 Token: {repomix çıktısındaki token sayısı}
+Neden: {tetikleyen olay}
 ```
 
-### Repomix Seçenekleri
+---
 
-| Seçenek | Açıklama |
+### 5. Karar Kaydı
+
+Tasarım kararı alındığında:
+```
+[KARAR] {YYYY-MM-DD} — {konu}
+Ne: {karar ne}
+Neden: {gerekçe}
+Alternatifler: {değerlendirilen diğer seçenekler}
+```
+
+### 6. Deployment Kaydı
+
+Deployment yapıldığında:
+```
+[DEPLOYMENT] {YYYY-MM-DD} — {uygulama adı}
+Ortam: production / staging
+Commit: {hash veya mesaj}
+Durum: başarılı / başarısız
+Not: {varsa özel durum}
+```
+
+---
+
+## Notebook Yapısı
+
+| Tip | İçerik |
 |---|---|
-| `--compress` | Tree-sitter ile kod sıkıştırma — token tasarrufu |
-| `--style markdown` | Markdown çıktı (NotebookLM için ideal) |
-| `--include-logs` | Git commit geçmişini dahil et |
-| `--ignore "docs/repomix-output.md"` | Kendi çıktısını dışarıda bırak |
-| `--output docs/repomix-output.md` | Çıktı konumu |
+| **Notes** | Kısa loglar: [TAMAMLANDI] [BUG-COZUM] [KARAR] [DEPLOYMENT] [REPOMIX-SYNC] |
+| **Sources** | Codebase Snapshot (repomix), tasarım dokümanları (docs/plans/) |
 
-### .gitignore Notu
-`docs/repomix-output.md` git'e commit edilmez — sadece NotebookLM için üretilir.
+**Kaynak önceliği:** Codebase Snapshot en güncel kaynak olmalı — eskisi silinmeli.
 
 ---
 
-## MCP Araclari
+## MCP Araçları
 
-Bu skill asagidaki MCP toollarini kullanir:
-
-| Tool | Kullanim |
+| Tool | Ne Zaman |
 |---|---|
-| `notebook_list` | Mevcut notebooklari listele |
-| `notebook_create` | Yeni notebook olustur |
-| `notebook_query` | Proje hafizasini sorgula |
-| `note` (action=create) | Yeni not ekle |
-| `note` (action=list) | Mevcut notlari listele |
-| `source_add` | Dokuman/URL kaynak olarak ekle |
-| `notebook_describe` | Notebook ozetini al |
+| `notebook_query` | Session başı, görev öncesi, hata araştırma |
+| `note` (create) | Görev sonu, hata çözümü, karar, deployment |
+| `note` (list) | Mevcut notlara bak |
+| `source_add` | Repomix sync, yeni doküman ekleme |
+| `source_delete` | Eski snapshot silme |
+| `notebook_get` | Source ID bulmak için |
+| `notebook_create` | İlk kurulumda |
+| `notebook_describe` | Notebook özeti |
 
 ---
 
-## Notebook Yapisi
+## Notebook ID
 
-Tek notebook, iki icerik tipi:
-
-**Notes** — Kisa, yapisal loglar (kararlar, deploymentlar, bug cozumleri)
-
-**Sources** — Uzun dokumanlari (tasarim dokumanlari, implementation planlari `docs/plans/` altindakiler)
-
----
-
-## Baslangic Kurulumu (ilk kullanimda)
-
-1. `notebook_list` ile "OpenClawMaster" adli notebook ara
-2. Yoksa `notebook_create` ile olustur: title = "OpenClawMaster — Project Memory"
-3. Notebook ID'sini `docs/notebooklm-notebook-id.txt` dosyasina yaz
-4. Ilk source olarak `docs/plans/` altindaki tasarim dokümanlarini ekle
+Her zaman `docs/notebooklm-notebook-id.txt` dosyasından oku:
+```
+Mevcut ID: 01c4d534-e76e-4b5b-bd1c-723dd6b87d14
+```
 
 ---
 
-## Onemli Kurallar
+## Kurallar
 
-- Her onemli karar veya tamamlanan is sonrasi kayit yap — sorulmasan da
-- Kayitlari kisa ve yapisal tut (uzun paragraflar degil, madde madde)
-- Notebook ID'yi her zaman `docs/notebooklm-notebook-id.txt` dosyasindan oku
-- Sorgularken Turkce soru geldiyse Turkce yanit ver
+- Kullanıcı "kaydet" demese de önemli olaylarda yaz
+- Notlar madde madde, paragraf değil
+- Her not başında etiket: [TAMAMLANDI] [BUG-COZUM] [KARAR] [DEPLOYMENT] [REPOMIX-SYNC]
+- Hata araştırırken önce notebook'a sor — aynı hatayı tekrar araştırma
+- Repomix sync'te eski snapshot silinmeden yeni eklenmez
+- Türkçe sorulara Türkçe yanıt ver
