@@ -159,11 +159,22 @@ Not: {varsa özel durum}
 
 ---
 
-## Notebook ID
+## Notebook ID'leri
 
-Her zaman `docs/notebooklm-notebook-id.txt` dosyasından oku:
+`docs/notebooklm-notebook-id.txt` dosyasından oku:
+
+| Anahtar | Notebook | Ne Zaman Kullanılır |
+|---|---|---|
+| `ACTIVE` | OpenClawMaster — Project Memory | Günlük kullanım: kararlar, tamamlanan işler, deploymentlar, session başı |
+| `DEBUG` | OpenClawMaster — Debug KB | Hata araştırırken, bug çözümü kaydederken |
+| `ARCHIVE` | OpenClaw Manager - Proje (eski) | Çok spesifik geçmiş sorularında, nadiren |
+
+**Kural:** Hata araştırırken önce `DEBUG` notebook'u sorgula. Genel bağlam için `ACTIVE`.
+
 ```
-Mevcut ID: 01c4d534-e76e-4b5b-bd1c-723dd6b87d14
+ACTIVE  = 01c4d534-e76e-4b5b-bd1c-723dd6b87d14
+DEBUG   = e941bc80-b038-48a8-8d14-d64248c6c856
+ARCHIVE = fce490df-46d1-4897-bbef-a8081aa506ce
 ```
 
 ---

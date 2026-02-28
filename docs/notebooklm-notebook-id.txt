@@ -1,1 +1,11 @@
-01c4d534-e76e-4b5b-bd1c-723dd6b87d14
+# OpenClawMaster — NotebookLM Notebook IDs
+# Kullanim: docs/notebooklm-notebook-id.txt'i oku, ilgili ID'yi al
+
+# Aktif proje hafizasi — genel kararlar, tamamlanan isler, deploymentlar
+ACTIVE=01c4d534-e76e-4b5b-bd1c-723dd6b87d14
+
+# Sadece hatalar ve cozumleri — bug araştırırken buraya bak
+DEBUG=e941bc80-b038-48a8-8d14-d64248c6c856
+
+# Eski proje arsivi — cok spesifik gecmis sorulari icin
+ARCHIVE=fce490df-46d1-4897-bbef-a8081aa506ce

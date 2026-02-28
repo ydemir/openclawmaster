@@ -71,12 +71,12 @@ Kullanıcı ilk mesajı gönderdiğinde, herhangi bir iş yapmadan önce:
 ### HATA YÖNETİMİ AKIŞI
 
 **Hata ilk karşılaşıldığında:**
-1. `notebook_query "bu hata daha önce yaşandı mı: {hata mesajı}"` — geçmişe bak
+1. **DEBUG notebook'unu** sorgula: `notebook_query "bu hata daha önce yaşandı mı: {hata mesajı}"`
 2. Geçmişte çözüm varsa → direkt uygula, zaman kaybetme
 3. Geçmişte yoksa → araştır ve çöz
 
 **Hata çözüldükten sonra — SORMADAN yap:**
-1. `note` ile [BUG-COZUM] notu ekle:
+1. `note` ile **DEBUG notebook'una** [BUG-COZUM] notu ekle:
    - Hata ne idi
    - Neden oldu (kök neden)
    - Nasıl çözüldü
