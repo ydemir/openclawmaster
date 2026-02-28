@@ -1,3 +1,5 @@
 .env
 .env.local
 *.env
+docs/repomix-output.md
+nul

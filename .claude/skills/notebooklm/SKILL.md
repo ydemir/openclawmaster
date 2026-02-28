@@ -86,6 +86,60 @@ Ornek sorgular:
 
 ---
 
+## Repomix Sync — Codebase'i Notebook'a Ekle
+
+Repomix, tüm codebase'i tek bir AI-dostu dosyaya paketler. Bu dosya NotebookLM'e kaynak olarak eklenerek AI'ın her zaman güncel kod bağlamına sahip olması sağlanır.
+
+### Ne Zaman Yapılır
+- 3+ dosya değiştiğinde (otomatik kural)
+- Yeni skill eklendiğinde
+- Büyük bir feature tamamlandığında
+- Notebook'taki snapshot 1 günden eskiyse
+
+### Adımlar
+
+**1. Codebase'i paketle (PowerShell):**
+```powershell
+npx repomix@latest --style markdown --compress --output docs/repomix-output.md
+```
+
+**2. Eski snapshot kaynağını sil (varsa):**
+```
+source_list_drive ile "Codebase Snapshot" adlı kaynağı bul → source_delete ile sil
+```
+
+**3. Yeni snapshot'ı kaynak olarak ekle:**
+```
+source_add(
+  notebook_id = <docs/notebooklm-notebook-id.txt'den oku>,
+  source_type = "file",
+  file_path = "docs/repomix-output.md",
+  title = "Codebase Snapshot — {YYYY-MM-DD}"
+)
+```
+
+**4. Sync notunu kaydet:**
+```
+[REPOMIX-SYNC] {tarih} — Codebase snapshot güncellendi
+Dosya sayısı: {N}
+Token: {repomix çıktısındaki token sayısı}
+```
+
+### Repomix Seçenekleri
+
+| Seçenek | Açıklama |
+|---|---|
+| `--compress` | Tree-sitter ile kod sıkıştırma — token tasarrufu |
+| `--style markdown` | Markdown çıktı (NotebookLM için ideal) |
+| `--include-logs` | Git commit geçmişini dahil et |
+| `--ignore "docs/repomix-output.md"` | Kendi çıktısını dışarıda bırak |
+| `--output docs/repomix-output.md` | Çıktı konumu |
+
+### .gitignore Notu
+`docs/repomix-output.md` git'e commit edilmez — sadece NotebookLM için üretilir.
+
+---
+
 ## MCP Araclari
 
 Bu skill asagidaki MCP toollarini kullanir:

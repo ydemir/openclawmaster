@@ -45,3 +45,27 @@ A change is “done” only if:
 - gh CLI installed for GitHub operations
 - Coolify managed deployments
 - notebooklm-mcp-cli installed for NotebookLM history
+- repomix installed globally: `npm install -g repomix`
+
+## NotebookLM Memory Protocol (ZORUNLU)
+Her session'da ve önemli değişikliklerde bu protokolü uygula:
+
+1. **Session başlangıcı:** Notebook'u sorgula — `notebook_query` ile bağlamı yükle
+2. **3+ dosya değiştiğinde:** Repomix sync yap (aşağıya bak)
+3. **Önemli olay sonrası:** Not ekle — karar, tamamlanan iş, deployment, bug çözümü
+4. **Kod bağlamı güncelliği:** Notebook'taki repomix kaynağı 1 günden eskiyse yenile
+
+### Repomix Sync Komutu (PowerShell)
+```powershell
+# Codebase'i paketle (compress ile token tasarrufu)
+npx repomix@latest --style markdown --compress --output docs/repomix-output.md
+
+# NotebookLM'e kaynak olarak ekle (source_add ile mevcut kaynağı güncelle)
+```
+Kaynak adı: `Codebase Snapshot — {YYYY-MM-DD}`
+
+### Ne Zaman Repomix Sync Yapılır
+- 3 veya daha fazla dosya değiştiğinde
+- Yeni bir skill eklendiğinde
+- Büyük bir feature tamamlandığında
+- Bir sonraki session için bağlam bırakmak istediğinde
