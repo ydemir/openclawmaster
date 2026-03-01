@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "be38833adb48e852237e190a99fe720593f651c19676b0b226befacaeacb70a2"
     },
+    "openclaw-config": {
+      "source": "adisinghstudent/easyclaw",
+      "sourceType": "github",
+      "computedHash": "1fb60dafb11f33932edb152e8423c620681382b3b107398d96d618ec7e5a85cd"
+    },
     "writing-plans": {
       "source": "obra/superpowers",
       "sourceType": "github",

@@ -2,4 +2,5 @@
 .env.local
 *.env
 docs/repomix-output.md
+repomix-output.xml
 nul
