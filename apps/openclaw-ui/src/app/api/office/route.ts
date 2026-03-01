@@ -64,21 +64,44 @@ interface AgentDefinition {
   workspace: string;
 }
 
-function discoverAgents(config: any, openclawDir: string): AgentDefinition[] {
-  const configuredList = Array.isArray(config?.agents?.list)
-    ? (config.agents.list as AgentDefinition[])
-    : [];
+function normalizeWorkspacePath(workspace: string, openclawDir: string): string {
+  if (!workspace) return workspace;
+  if (workspace.startsWith("/")) return workspace;
+  return join(openclawDir, workspace);
+}
 
-  if (configuredList.length > 0) {
-    return configuredList.filter(
-      (agent) =>
-        agent &&
-        typeof agent.id === "string" &&
-        typeof agent.workspace === "string" &&
-        agent.workspace.length > 0
-    );
+function isDirectory(path: string): boolean {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function guessWorkspacePath(
+  agentId: string,
+  openclawDir: string,
+  defaultWorkspace: string
+): string {
+  const candidates: string[] = [];
+
+  if (agentId === "main") {
+    candidates.push(join(openclawDir, "workspace"));
+  } else {
+    candidates.push(join(openclawDir, `workspace-${agentId}`));
   }
 
+  if (defaultWorkspace) {
+    candidates.push(defaultWorkspace);
+  }
+
+  // Last fallback for unknown agents
+  candidates.push(join(openclawDir, "workspace"));
+
+  return candidates.find((candidate) => isDirectory(candidate)) || candidates[0];
+}
+
+function discoverAgents(config: any, openclawDir: string): AgentDefinition[] {
   const discovered: AgentDefinition[] = [];
   const seen = new Set<string>();
 
@@ -88,8 +111,45 @@ function discoverAgents(config: any, openclawDir: string): AgentDefinition[] {
     discovered.push(agent);
   };
 
-  const defaultWorkspace = config?.agents?.defaults?.workspace;
-  if (typeof defaultWorkspace === "string" && defaultWorkspace.length > 0) {
+  const defaultWorkspace =
+    typeof config?.agents?.defaults?.workspace === "string" &&
+    config.agents.defaults.workspace.length > 0
+      ? normalizeWorkspacePath(config.agents.defaults.workspace, openclawDir)
+      : "";
+
+  const configuredList = Array.isArray(config?.agents?.list)
+    ? (config.agents.list as unknown[])
+    : [];
+
+  for (const rawAgent of configuredList) {
+    let id = "";
+    let name: string | undefined;
+    let workspace = "";
+
+    if (typeof rawAgent === "string") {
+      id = rawAgent;
+    } else if (rawAgent && typeof rawAgent === "object") {
+      const agent = rawAgent as Record<string, unknown>;
+      if (typeof agent.id === "string") id = agent.id;
+      if (typeof agent.name === "string") name = agent.name;
+      if (typeof agent.workspace === "string" && agent.workspace.length > 0) {
+        workspace = normalizeWorkspacePath(agent.workspace, openclawDir);
+      }
+    }
+
+    if (!id) continue;
+    if (!workspace) {
+      workspace = guessWorkspacePath(id, openclawDir, defaultWorkspace);
+    }
+
+    addAgent({ id, name, workspace });
+  }
+
+  if (discovered.length > 0) {
+    return discovered;
+  }
+
+  if (defaultWorkspace) {
     addAgent({ id: "main", name: "Main", workspace: defaultWorkspace });
   }
 
@@ -110,6 +170,23 @@ function discoverAgents(config: any, openclawDir: string): AgentDefinition[] {
     }
   } catch {
     // If discovery fails (permission/path issues), keep whatever we already found.
+  }
+
+  // Secondary fallback for setups that keep agent folders under openclawDir/agents.
+  try {
+    const agentDirs = readdirSync(join(openclawDir, "agents"), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+
+    for (const agentId of agentDirs) {
+      addAgent({
+        id: agentId,
+        name: agentId,
+        workspace: guessWorkspacePath(agentId, openclawDir, defaultWorkspace),
+      });
+    }
+  } catch {
+    // Ignore if agents directory does not exist.
   }
 
   return discovered;
