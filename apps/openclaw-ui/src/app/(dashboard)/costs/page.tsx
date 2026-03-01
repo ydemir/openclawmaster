@@ -6,12 +6,12 @@ import { LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell, XAxi
 
 interface MaliyetData {
   today: number;
-  dün: number;
+  yesterday: number;
   thisMonth: number;
   lastMonth: number;
   projected: number;
   budget: number;
-  byAjan: Array<{ agent: string; cost: number; tokens: number }>;
+  byAgent: Array<{ agent: string; cost: number; tokens: number }>;
   byModel: Array<{ model: string; cost: number; tokens: number }>;
   daily: Array<{ date: string; cost: number; input: number; output: number }>;
   hourly: Array<{ hour: string; cost: number }>;
@@ -41,7 +41,23 @@ export default function MaliyetsPage() {
       const res = await fetch(`/api/costs?timeframe=${timeframe}`);
       if (res.ok) {
         const data = await res.json();
-        setMaliyetData(data);
+        const normalized: MaliyetData = {
+          today: Number(data.today ?? 0),
+          yesterday: Number(data.yesterday ?? data["dün"] ?? 0),
+          thisMonth: Number(data.thisMonth ?? 0),
+          lastMonth: Number(data.lastMonth ?? 0),
+          projected: Number(data.projected ?? 0),
+          budget: Number(data.budget ?? 0),
+          byAgent: Array.isArray(data.byAgent)
+            ? data.byAgent
+            : Array.isArray(data.byAjan)
+              ? data.byAjan
+              : [],
+          byModel: Array.isArray(data.byModel) ? data.byModel : [],
+          daily: Array.isArray(data.daily) ? data.daily : [],
+          hourly: Array.isArray(data.hourly) ? data.hourly : [],
+        };
+        setMaliyetData(normalized);
       }
     } catch (error) {
       console.error("Failed to fetch cost data:", error);
@@ -74,8 +90,12 @@ export default function MaliyetsPage() {
 
   const budgetPercent = (costData.thisMonth / costData.budget) * 100;
   const budgetColor = budgetPercent < 60 ? "var(--success)" : budgetPercent < 85 ? "var(--warning)" : "var(--error)";
-  const todayChange = ((costData.today - costData.dün) / costData.dün) * 100;
-  const monthChange = ((costData.thisMonth - costData.lastMonth) / costData.lastMonth) * 100;
+  const todayChange = costData.yesterday > 0
+    ? ((costData.today - costData.yesterday) / costData.yesterday) * 100
+    : 0;
+  const monthChange = costData.lastMonth > 0
+    ? ((costData.thisMonth - costData.lastMonth) / costData.lastMonth) * 100
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -140,7 +160,7 @@ export default function MaliyetsPage() {
             ${costData.today.toFixed(2)}
           </div>
           <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            vs ${costData.dün.toFixed(2)} dün
+            vs ${costData.yesterday.toFixed(2)} dün
           </p>
         </div>
 
@@ -239,7 +259,7 @@ export default function MaliyetsPage() {
             Ajana Göre Maliyet
           </h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={costData.byAjan}>
+            <BarChart data={costData.byAgent}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="agent" stroke="var(--text-muted)" style={{ fontSize: "12px" }} />
               <YAxis stroke="var(--text-muted)" style={{ fontSize: "12px" }} />
@@ -360,8 +380,8 @@ export default function MaliyetsPage() {
               </tr>
             </thead>
             <tbody>
-              {costData.byAjan.map((agent) => {
-                const percent = (agent.cost / costData.thisMonth) * 100;
+              {costData.byAgent.map((agent) => {
+                const percent = costData.thisMonth > 0 ? (agent.cost / costData.thisMonth) * 100 : 0;
                 return (
                   <tr key={agent.agent} style={{ borderBottom: "1px solid var(--border)" }}>
                     <td className="py-3 px-4">

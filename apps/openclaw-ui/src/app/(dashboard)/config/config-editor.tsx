@@ -5,10 +5,8 @@ import { useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import { RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
-import { useRpc } from "@/hooks/use-rpc";
 
 export function ConfigEditor() {
-  const { rpc } = useRpc();
   const [value, setValue] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -16,14 +14,18 @@ export function ConfigEditor() {
   const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
-      const response = (await rpc("config.get")) as { text?: string };
+      const res = await fetch("/api/config");
+      if (!res.ok) {
+        throw new Error("Config okunamadi");
+      }
+      const response = (await res.json()) as { text?: string };
       setValue(response?.text ?? "{}");
     } catch {
       toast.error("Config yuklenemedi");
     } finally {
       setLoading(false);
     }
-  }, [rpc]);
+  }, []);
 
   useEffect(() => {
     void loadConfig();
@@ -33,7 +35,14 @@ export function ConfigEditor() {
     setSaving(true);
     try {
       JSON.parse(value);
-      await rpc("config.apply", { text: value });
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: value }),
+      });
+      if (!res.ok) {
+        throw new Error("Config kaydi basarisiz");
+      }
       toast.success("Config kaydedildi ve uygulandi");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Bilinmeyen hata";

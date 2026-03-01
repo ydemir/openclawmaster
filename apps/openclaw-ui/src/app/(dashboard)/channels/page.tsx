@@ -1,5 +1,7 @@
 import { readChannelConfig } from "@/lib/openclaw-fs";
 
+export const dynamic = "force-dynamic";
+
 const channelEmoji: Record<string, string> = {
   whatsapp: "📱",
   telegram: "✈️",
@@ -46,6 +48,9 @@ export default function KanallarPage() {
             const accounts = config.accounts && typeof config.accounts === "object"
               ? Object.keys(config.accounts as Record<string, unknown>)
               : [];
+            const groups = config.groups && typeof config.groups === "object"
+              ? Object.keys(config.groups as Record<string, unknown>)
+              : [];
 
             return (
               <article
@@ -86,6 +91,11 @@ export default function KanallarPage() {
                 {accounts.length ? (
                   <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                     Hesaplar: {accounts.join(", ")}
+                  </div>
+                ) : null}
+                {groups.length ? (
+                  <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    Gruplar: {groups.length}
                   </div>
                 ) : null}
               </article>

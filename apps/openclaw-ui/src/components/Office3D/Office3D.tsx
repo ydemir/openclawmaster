@@ -33,7 +33,19 @@ export default function Office3D() {
     linkedin: { id: 'linkedin', status: 'working', currentTask: 'Redactando post', model: 'sonnet', tokensPerHour: 5000, tasksInQueue: 2, uptime: 10 },
     social: { id: 'social', status: 'idle', model: 'sonnet', tokensPerHour: 0, tasksInQueue: 0, uptime: 7 },
     infra: { id: 'infra', status: 'error', currentTask: 'Failed deployment', model: 'haiku', tokensPerHour: 1000, tasksInQueue: 0, uptime: 15 },
+    devclaw: { id: 'devclaw', status: 'working', currentTask: 'Kod yaziyor', model: 'sonnet', tokensPerHour: 6500, tasksInQueue: 1, uptime: 6 },
   });
+
+  const getStateForAgent = (agentId: string): AgentState =>
+    agentStates[agentId] ?? {
+      id: agentId,
+      status: 'idle',
+      currentTask: 'Bekliyor',
+      model: 'sonnet',
+      tokensPerHour: 0,
+      tasksInQueue: 0,
+      uptime: 0,
+    };
 
   const handleDeskClick = (agentId: string) => {
     setSelectedAgent(agentId);
@@ -115,7 +127,7 @@ export default function Office3D() {
             <AgentDesk
               key={agent.id}
               agent={agent}
-              state={agentStates[agent.id]}
+              state={getStateForAgent(agent.id)}
               onClick={() => handleDeskClick(agent.id)}
               isSelected={selectedAgent === agent.id}
             />
@@ -126,7 +138,7 @@ export default function Office3D() {
             <MovingAvatar
               key={`avatar-${agent.id}`}
               agent={agent}
-              state={agentStates[agent.id]}
+              state={getStateForAgent(agent.id)}
               officeBounds={{ minX: -8, maxX: 8, minZ: -7, maxZ: 7 }}
               obstacles={obstacles}
               otherAvatarPositions={avatarPositions}
@@ -178,7 +190,7 @@ export default function Office3D() {
       {selectedAgent && (
         <AgentPanel
           agent={AGENTS.find(a => a.id === selectedAgent)!}
-          state={agentStates[selectedAgent]}
+          state={getStateForAgent(selectedAgent)}
           onClose={handleClosePanel}
         />
       )}

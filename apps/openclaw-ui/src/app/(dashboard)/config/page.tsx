@@ -6,11 +6,10 @@ export default function ConfigPage() {
       <div>
         <h1 style={{ fontFamily: "var(--font-heading)", fontSize: "1.7rem", fontWeight: 700 }}>Config Editor</h1>
         <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-          WebSocket RPC ile `config.get` / `config.apply`.
+          `openclaw.json` dosyasini goruntule ve guvenli sekilde guncelle.
         </p>
       </div>
       <ConfigEditor />
     </div>
   );
 }
-
