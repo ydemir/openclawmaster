@@ -283,9 +283,20 @@ export async function GET() {
     return NextResponse.json({ agents });
   } catch (error) {
     console.error("Error getting office data:", error);
-    return NextResponse.json(
-      { error: "Failed to load office data" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      agents: [
+        {
+          id: "main",
+          name: "Tenacitas",
+          emoji: "🦞",
+          color: "#ff6b35",
+          role: "Boss",
+          currentTask: "SLEEPING: zzZ...",
+          isActive: false,
+        },
+      ],
+      warning:
+        "OpenClaw config could not be loaded. Using fallback office data.",
+    });
   }
 }
