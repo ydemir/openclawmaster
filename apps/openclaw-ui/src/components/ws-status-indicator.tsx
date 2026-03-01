@@ -38,8 +38,7 @@ export function WsStatusIndicator() {
       ) : (
         <WifiOff style={{ width: "12px", height: "12px" }} />
       )}
-      {isConnected ? "Connected" : isPending ? "Reconnecting" : "Disconnected"}
+      {isConnected ? "Bağlı" : isPending ? "Yeniden bağlanıyor" : "Bağlantı yok"}
     </div>
   );
 }
-

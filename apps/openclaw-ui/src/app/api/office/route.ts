@@ -64,6 +64,12 @@ interface AgentDefinition {
   workspace: string;
 }
 
+type AgentStatus = {
+  isActive: boolean;
+  currentTask: string;
+  lastSeen: number;
+};
+
 function normalizeWorkspacePath(workspace: string, openclawDir: string): string {
   if (!workspace) return workspace;
   if (workspace.startsWith("/")) return workspace;
@@ -193,7 +199,7 @@ function discoverAgents(config: any, openclawDir: string): AgentDefinition[] {
 }
 
 async function getAgentStatusFromGateway(): Promise<
-  Record<string, { isActive: boolean; currentTask: string; lastSeen: number }>
+  Record<string, AgentStatus>
 > {
   try {
     const configPath = (process.env.OPENCLAW_DIR || "/root/.openclaw") + "/openclaw.json";
@@ -226,10 +232,7 @@ async function getAgentStatusFromGateway(): Promise<
     }
 
     const sessions = (await response.json()) as AgentSession[];
-    const agentStatus: Record<
-      string,
-      { isActive: boolean; currentTask: string; lastSeen: number }
-    > = {};
+    const agentStatus: Record<string, AgentStatus> = {};
 
     for (const session of sessions) {
       if (!session.agentId) continue;
@@ -271,10 +274,73 @@ async function getAgentStatusFromGateway(): Promise<
   }
 }
 
+function getAgentStatusFromSessionIndex(
+  openclawDir: string,
+  agentId: string
+): AgentStatus | null {
+  try {
+    const sessionsIndexPath = join(
+      openclawDir,
+      "agents",
+      agentId,
+      "sessions",
+      "sessions.json"
+    );
+    const raw = JSON.parse(readFileSync(sessionsIndexPath, "utf-8")) as Record<
+      string,
+      { updatedAt?: number; subject?: string; displayName?: string }
+    >;
+
+    if (!raw || typeof raw !== "object") return null;
+
+    let latestTs = 0;
+    let latestLabel = "";
+
+    for (const entry of Object.values(raw)) {
+      if (!entry || typeof entry !== "object") continue;
+      const ts = typeof entry.updatedAt === "number" ? entry.updatedAt : 0;
+      if (ts > latestTs) {
+        latestTs = ts;
+        latestLabel = entry.subject || entry.displayName || "";
+      }
+    }
+
+    if (latestTs <= 0) return null;
+
+    const now = Date.now();
+    const minutesAgo = (now - latestTs) / 1000 / 60;
+    const context = latestLabel ? ` (${latestLabel})` : "";
+
+    if (minutesAgo < 5) {
+      return {
+        isActive: true,
+        currentTask: `ACTIVE: Oturum aktif${context}`,
+        lastSeen: latestTs,
+      };
+    }
+
+    if (minutesAgo < 30) {
+      return {
+        isActive: false,
+        currentTask: `IDLE: Son etkileşim${context}`,
+        lastSeen: latestTs,
+      };
+    }
+
+    return {
+      isActive: false,
+      currentTask: "SLEEPING: zzZ...",
+      lastSeen: latestTs,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function getAgentStatusFromFiles(
   agentId: string,
   workspace: string
-): { isActive: boolean; currentTask: string; lastSeen: number } {
+): AgentStatus {
   try {
     const today = new Date().toISOString().split("T")[0];
     const memoryFile = join(workspace, "memory", `${today}.md`);
@@ -309,7 +375,7 @@ function getAgentStatusFromFiles(
     } else {
       return { isActive: false, currentTask: "SLEEPING: zzZ...", lastSeen };
     }
-  } catch (error) {
+  } catch {
     // No memory file or error reading
     return { isActive: false, currentTask: "SLEEPING: zzZ...", lastSeen: 0 };
   }
@@ -338,7 +404,11 @@ export async function GET() {
       };
 
       // Get status from gateway, or fallback to files
-      let status = gatewayStatus[agent.id];
+      let status: AgentStatus | undefined = gatewayStatus[agent.id];
+      if (!status) {
+        const indexedStatus = getAgentStatusFromSessionIndex(openclawDir, agent.id);
+        if (indexedStatus) status = indexedStatus;
+      }
       if (!status) {
         status = getAgentStatusFromFiles(agent.id, agent.workspace);
       }
