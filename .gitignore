@@ -4,3 +4,5 @@
 docs/repomix-output.md
 repomix-output.xml
 nul
+.remote-openclaw/
+.coolify-host.key
